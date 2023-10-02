@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.9.1.41621",
-      "templateHash": "12511286077090340745"
+      "version": "0.16.2.56959",
+      "templateHash": "16845623836162815611"
     }
   },
   "parameters": {
@@ -36,12 +36,24 @@
       "metadata": {
         "description": "The display name of the publisher."
       }
+    },
+    "globalPolicy": {
+      "type": "string",
+      "defaultValue": "[variables('$fxv#0')]",
+      "metadata": {
+        "description": "A global policy to use with the service."
+      }
     }
+  },
+  "variables": {
+    "$fxv#0": "<policies>\n  <inbound>\n    <cors allow-credentials=\"true\">\n      <allowed-origins>\n        <origin>https://contoso.developer.azure-api.net</origin>\n        <origin>https://developer.contoso.com</origin>\n      </allowed-origins>\n      <allowed-methods preflight-result-max-age=\"300\">\n        <method>GET</method>\n        <method>PUT</method>\n        <method>POST</method>\n        <method>PATCH</method>\n        <method>HEAD</method>\n        <method>DELETE</method>\n        <method>OPTIONS</method>\n      </allowed-methods>\n      <allowed-headers>\n        <header>Content-Type</header>\n        <header>Cache-Control</header>\n        <header>Authorization</header>\n      </allowed-headers>\n    </cors>\n  </inbound>\n  <backend>\n    <forward-request />\n  </backend>\n  <outbound />\n  <on-error />\n</policies>\n",
+    "portalUri": "[format('https://{0}.developer.azure-api.net', toLower(parameters('name')))]",
+    "actualGlobalPolicy": "[replace(parameters('globalPolicy'), '__APIM__', variables('portalUri'))]"
   },
   "resources": [
     {
       "type": "Microsoft.ApiManagement/service",
-      "apiVersion": "2021-08-01",
+      "apiVersion": "2022-08-01",
       "name": "[parameters('name')]",
       "location": "[parameters('location')]",
       "sku": {
@@ -70,12 +82,33 @@
           "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TLS_RSA_WITH_AES_256_CBC_SHA256": "False",
           "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA": "False",
           "Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Ciphers.TLS_RSA_WITH_AES_128_GCM_SHA256": "False"
+        },
+        "apiVersionConstraint": {
+          "minApiVersion": "2021-08-01"
         }
+      },
+      "metadata": {
+        "description": "An example API Management service."
+      }
+    },
+    {
+      "type": "Microsoft.ApiManagement/service/policies",
+      "apiVersion": "2022-08-01",
+      "name": "[format('{0}/{1}', parameters('name'), 'policy')]",
+      "properties": {
+        "value": "[variables('actualGlobalPolicy')]",
+        "format": "xml"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ApiManagement/service', parameters('name'))]"
+      ],
+      "metadata": {
+        "description": "Configure the API Management Service global policy."
       }
     },
     {
       "type": "Microsoft.ApiManagement/service/products",
-      "apiVersion": "2021-08-01",
+      "apiVersion": "2022-08-01",
       "name": "[format('{0}/{1}', parameters('name'), 'echo')]",
       "properties": {
         "displayName": "Echo",
@@ -85,11 +118,14 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ApiManagement/service', parameters('name'))]"
-      ]
+      ],
+      "metadata": {
+        "description": "An example product."
+      }
     },
     {
       "type": "Microsoft.ApiManagement/service/apiVersionSets",
-      "apiVersion": "2021-08-01",
+      "apiVersion": "2022-08-01",
       "name": "[format('{0}/{1}', parameters('name'), 'echo')]",
       "properties": {
         "displayName": "Echo API",
@@ -98,15 +134,19 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ApiManagement/service', parameters('name'))]"
-      ]
+      ],
+      "metadata": {
+        "description": "An example API Version."
+      }
     },
     {
       "type": "Microsoft.ApiManagement/service/apis",
-      "apiVersion": "2021-08-01",
+      "apiVersion": "2022-08-01",
       "name": "[format('{0}/{1}', parameters('name'), 'echo-v1')]",
       "properties": {
         "displayName": "Echo API",
         "description": "An echo API service.",
+        "type": "http",
         "path": "echo",
         "serviceUrl": "https://echo.contoso.com",
         "protocols": [
@@ -119,11 +159,14 @@
       "dependsOn": [
         "[resourceId('Microsoft.ApiManagement/service', parameters('name'))]",
         "[resourceId('Microsoft.ApiManagement/service/apiVersionSets', parameters('name'), 'echo')]"
-      ]
+      ],
+      "metadata": {
+        "description": "An example API."
+      }
     },
     {
       "type": "Microsoft.ApiManagement/service/backends",
-      "apiVersion": "2021-08-01",
+      "apiVersion": "2022-08-01",
       "name": "[format('{0}/{1}', parameters('name'), 'echo')]",
       "properties": {
         "title": "echo",
@@ -133,7 +176,10 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ApiManagement/service', parameters('name'))]"
-      ]
+      ],
+      "metadata": {
+        "description": "An example API backend."
+      }
     }
   ]
 }

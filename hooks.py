@@ -35,10 +35,13 @@ def replace_maml(markdown: str, page: mkdocs.structure.nav.Page, config: mkdocs.
         markdown = markdown.replace("## LONG DESCRIPTION", "## Description")
         markdown = re.sub("(\#\#\s+(NOTE|KEYWORDS)\s+(.|\s{1,2}(?!\#))+)", "", markdown)
 
-    if page.meta.get('link_users', 'false'):
+    if page.meta.get('link_users', 'false') != 'false':
         markdown = re.sub(r"\@([\w-]*)", r"[@\g<1>](https://github.com/\g<1>)", markdown)
 
     markdown = add_tags(markdown)
+
+    if markdown.__contains__("<!-- EXPERIMENTAL -->"):
+        page.meta['experimental'] = 'true'
 
     if markdown.__contains__("<!-- OBSOLETE -->"):
         page.meta['obsolete'] = 'true'
@@ -46,11 +49,21 @@ def replace_maml(markdown: str, page: mkdocs.structure.nav.Page, config: mkdocs.
     if page.canonical_url.__contains__("/baselines/"):
         page.meta['template'] = 'reference.html'
         page.meta['generated'] = 'true'
+        page.meta['type'] = 'baseline'
+        if page.meta.get('experimental', 'false') == 'true':
+            markdown = markdown.replace("<!-- EXPERIMENTAL -->", "!!! Experimental\r    This baseline is experimental and subject to change.")
+
         if page.meta.get('obsolete', 'false') == 'true':
-            markdown = markdown.replace("<!-- OBSOLETE -->", "!!! Warning\r    The baseline is obsolete.\r    Consider switching to a newer baseline.")
+            markdown = markdown.replace("<!-- OBSOLETE -->", "!!! Warning\r    This baseline is obsolete.\r    Consider switching to a newer baseline.")
 
     if page.canonical_url.__contains__("/rules/"):
         page.meta['template'] = 'reference.html'
+        page.meta['type'] = 'rule'
+        markdown = markdown.replace("```bicep\r", "```bicep title=\"Azure Bicep snippet\"\r")
+        markdown = markdown.replace("```json\r", "```json title=\"Azure Template snippet\"\r")
+        markdown = markdown.replace("```powershell\r", "```powershell title=\"Azure PowerShell snippet\"\r")
+        markdown = markdown.replace("```bash\r", "```bash title=\"Azure CLI snippet\"\r")
+        markdown = markdown.replace("```xml\r", "```xml title=\"API Management policy\"\r")
 
     if page.canonical_url.__contains__("/rules/") and page.meta.get("pillar", "None") != "None":
         page.meta['rule'] = page.canonical_url.split("/")[-2]
@@ -70,6 +83,9 @@ def replace_maml(markdown: str, page: mkdocs.structure.nav.Page, config: mkdocs.
 
     if page.meta.get("resource", "None") != "None":
         markdown = markdown.replace("<!-- TAGS -->", " · [:octicons-container-24: " + page.meta['resource'] + "](resource.md#" + page.meta['resource'].lower().replace(" ", "-") + ")\r<!-- TAGS -->")
+
+    if page.meta.get('source', 'None') != 'None':
+        markdown = markdown.replace("<!-- TAGS -->", " · [:octicons-file-code-24: Rule](" + page.meta['source'] + ")\r<!-- TAGS -->")
 
     if page.meta.get('release', 'None') == 'preview':
         markdown = markdown.replace("<!-- TAGS -->", " · :octicons-beaker-24: Preview\r<!-- TAGS -->")
@@ -114,6 +130,10 @@ def read_metadata(page: mkdocs.structure.nav.Page):
         if page.meta.get('rule', '') != '' and data.get(name, None) != None and data[name].get('Synopsis', None) != None:
             description = data[name]['Synopsis']
             page.meta['description'] = description
+
+        if page.meta.get('rule', '') != '' and data.get(name, None) != None and data[name].get('Source', None) != None:
+            page.meta['source'] = data[name]['Source']
+
 
     page.meta['tags'] = tags
 

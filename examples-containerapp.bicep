@@ -15,7 +15,10 @@ param location string = resourceGroup().location
 @description('The name of a Log Analytics workspace')
 param workspaceId string
 
-resource workspace 'Microsoft.OperationalInsights/workspaces@2021-06-01' existing = {
+@description('The revision of the container app.')
+param revision string
+
+resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: workspaceId
 }
 
@@ -31,12 +34,10 @@ var containers = [
 ]
 
 // An example App Environment
-resource kubeEnv 'Microsoft.Web/kubeEnvironments@2021-03-01' = {
+resource containerEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   name: envName
   location: location
   properties: {
-    type: 'managed'
-    internalLoadBalancerEnabled: false
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -48,18 +49,24 @@ resource kubeEnv 'Microsoft.Web/kubeEnvironments@2021-03-01' = {
 }
 
 // An example Container App
-resource containerApp 'Microsoft.Web/containerApps@2021-03-01' = {
+resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: appName
   location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
-    kubeEnvironmentId: kubeEnv.id
+    environmentId: containerEnv.id
     template: {
-      revisionSuffix: ''
+      revisionSuffix: revision
       containers: containers
     }
     configuration: {
       ingress: {
         allowInsecure: false
+        stickySessions: {
+          affinity: 'none'
+        }
       }
     }
   }

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.4.1272.37030",
-      "templateHash": "11720533163741448301"
+      "version": "0.21.1.54444",
+      "templateHash": "14295091017114091018"
     }
   },
   "parameters": {
@@ -33,6 +33,12 @@
       "metadata": {
         "description": "The name of a Log Analytics workspace"
       }
+    },
+    "revision": {
+      "type": "string",
+      "metadata": {
+        "description": "The revision of the container app."
+      }
     }
   },
   "variables": {
@@ -49,41 +55,45 @@
   },
   "resources": [
     {
-      "type": "Microsoft.Web/kubeEnvironments",
-      "apiVersion": "2021-03-01",
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2023-05-01",
       "name": "[parameters('envName')]",
       "location": "[parameters('location')]",
       "properties": {
-        "type": "managed",
-        "internalLoadBalancerEnabled": false,
         "appLogsConfiguration": {
           "destination": "log-analytics",
           "logAnalyticsConfiguration": {
-            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceId')), '2021-06-01').customerId]",
-            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceId')), '2021-06-01').primarySharedKey]"
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceId')), '2022-10-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceId')), '2022-10-01').primarySharedKey]"
           }
         }
       }
     },
     {
-      "type": "Microsoft.Web/containerApps",
-      "apiVersion": "2021-03-01",
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
       "name": "[parameters('appName')]",
       "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
       "properties": {
-        "kubeEnvironmentId": "[resourceId('Microsoft.Web/kubeEnvironments', parameters('envName'))]",
+        "environmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('envName'))]",
         "template": {
-          "revisionSuffix": "",
+          "revisionSuffix": "[parameters('revision')]",
           "containers": "[variables('containers')]"
         },
         "configuration": {
           "ingress": {
-            "allowInsecure": false
+            "allowInsecure": false,
+            "stickySessions": {
+              "affinity": "none"
+            }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/kubeEnvironments', parameters('envName'))]"
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('envName'))]"
       ]
     }
   ]
